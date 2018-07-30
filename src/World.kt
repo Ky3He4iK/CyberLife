@@ -19,7 +19,6 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
         title = "CyberLife 1.1.0 by Ky3He4iK"
         size = Dimension(worldWidth * cellSize + xBoundary * 2, worldHeight * cellSize + yBoundary * 2)
-        val screenSize = Toolkit.getDefaultToolkit().screenSize
         setLocation(0, 0)
 
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
