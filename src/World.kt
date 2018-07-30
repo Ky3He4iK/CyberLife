@@ -13,12 +13,11 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     private val cellSize = 5
     private var finished = Array(4) {false}
     private var working = true
-    private var needRedraw = false
 
     init {
         simulation = this
 
-        title = "CyberLife 1.0.0 by Ky3He4iK"
+        title = "CyberLife 1.0.2 by Ky3He4iK"
         size = Dimension(worldWidth * cellSize + xBoundary * 2, worldHeight * cellSize + yBoundary * 2)
         val screenSize = Toolkit.getDefaultToolkit().screenSize
         val frameSize = Dimension(size.width % screenSize.width, size.height % screenSize.height)
@@ -26,41 +25,34 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
         isVisible = true
+    }
 
+    private fun getCellColor(cell: ImprovedCell?): Color {
+        return when {
+            cell == null -> Color.WHITE
+            cell.alive == 1 || cell.alive == 2 -> {
+                organic++
+                Color.GRAY
+            }
+            cell.alive == 3 -> {
+                population++
+                cell.color.toColor()
+            }
+            else -> Color.BLACK
+        }
     }
 
     override fun paint(g: Graphics?) {
         g!!.drawRect(xBoundary - 1, yBoundary - 1, simulation.worldWidth * cellSize + 1, simulation.worldHeight * cellSize + 1)
+        g.color = Color.BLACK
+        g.fillRect(xBoundary, yBoundary, cellSize * worldWidth, cellSize * worldHeight)
 
         population = 0
         organic = 0
         for (y in 0 until worldHeight) {
             for (x in 0 until worldWidth) {
-                when {
-                    matrix[x][y] == null -> {
-                        g.color = Color.WHITE
-                        g.fillRect(xBoundary + x * cellSize, yBoundary + y * cellSize, cellSize, cellSize)
-                    }
-                    matrix[x][y]!!.alive == 1 || matrix[x][y]!!.alive == 2 -> {
-                        g.color = Color(200, 200, 200)
-                        g.fillRect(xBoundary + x * cellSize, yBoundary + y * cellSize, cellSize, cellSize)
-                        organic++
-                    }
-                    matrix[x][y]!!.alive == 3 -> {
-                        g.color = Color.BLACK
-                        g.fillRect(xBoundary + x * cellSize, yBoundary + y * cellSize, cellSize, cellSize)
-//                        val green = min(max(matrix[x][y]?.color?.green?.toInt() ?: 100 - (matrix[x][y]?.color?.green ?: 100.toByte()) * (matrix[x][y]?.energy ?: 200) / 2000, 0), 255)
-//                        val blue = ((matrix[x][y]?.color?.blue?.toInt() ?: 100) * 0.8 - (matrix[x][y]?.color?.blue?.toInt() ?: 100) * (matrix[x][y]?.mineral ?: 200) / 2000).toInt()
-//                         It's seems like a magic
-                        if (matrix[x][y] != null) {
-                            g.color = matrix[x][y]!!.color.toColor()
-                            g.fillRect(xBoundary + x * cellSize + 1, yBoundary + y * cellSize + 1, cellSize - 1, cellSize - 1)
-                            population++
-                        } else {
-                            println("Another NPE")
-                        }
-                    }
-                }
+                g.color = getCellColor(simulation.matrix[x][y])
+                g.fillRect(xBoundary + x * cellSize + 1, yBoundary + y * cellSize + 1, cellSize - 1, cellSize - 1)
             }
         }
 
@@ -86,12 +78,12 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
         finished = Array(thrCount) {false}
         val widthPart = worldWidth / thrCount
-        for (ind in 0 until thrCount) {
+        for (ind in 0 until thrCount)
             thread(isDaemon = true,
                     name = "$ind'th calculating thread") {
                 myThread(ind * widthPart, (ind + 1) * widthPart, ind)
             }
-        }
+
         thread(isDaemon = true,
                 name = "drawing thread") {
             drawingThread()
@@ -104,21 +96,14 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
                 while (finished[i])
                     Thread.sleep(1)
             day++
-//            if (day % 10 == 0)
-//                needRedraw = true
-//                paint(graphics) //update world info on screen
-
         }
         working = false
     }
 
     private fun drawingThread() {
         while (working) {
-//            while (!needRedraw)
-//                Thread.sleep(10)
-                Thread.sleep(100)
+            Thread.sleep(500)
             paint(graphics)
-//            needRedraw = false
         }
     }
 
