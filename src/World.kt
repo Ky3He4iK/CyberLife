@@ -17,11 +17,10 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     init {
         simulation = this
 
-        title = "CyberLife 1.0.2 by Ky3He4iK"
+        title = "CyberLife 1.1.0 by Ky3He4iK"
         size = Dimension(worldWidth * cellSize + xBoundary * 2, worldHeight * cellSize + yBoundary * 2)
         val screenSize = Toolkit.getDefaultToolkit().screenSize
-        val frameSize = Dimension(size.width % screenSize.width, size.height % screenSize.height)
-        setLocation((screenSize.width - frameSize.width) shl 1, (screenSize.height - frameSize.height) shl 1) //center frame
+        setLocation(0, 0)
 
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
         isVisible = true
