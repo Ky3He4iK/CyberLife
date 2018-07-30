@@ -10,7 +10,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     private var organic = 0
     private val xBoundary = 10
     private val yBoundary = 50
-    private val cellSize = 4
+    private val cellSize = 5
     private var finished = Array(4) {false}
     private var working = true
     private var needRedraw = false
@@ -56,6 +56,8 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
                             g.color = matrix[x][y]!!.color.toColor()
                             g.fillRect(xBoundary + x * cellSize + 1, yBoundary + y * cellSize + 1, cellSize - 1, cellSize - 1)
                             population++
+                        } else {
+                            println("Another NPE")
                         }
                     }
                 }
@@ -97,13 +99,13 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
         while (day < Int.MAX_VALUE) {
             finished = Array(thrCount) {true}
-            Thread.sleep(5)
+            Thread.sleep(10)
             for (i in 0 until thrCount)
                 while (finished[i])
                     Thread.sleep(1)
             day++
-            if (day % 10 == 0)
-                needRedraw = true
+//            if (day % 10 == 0)
+//                needRedraw = true
 //                paint(graphics) //update world info on screen
 
         }
@@ -112,10 +114,11 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
     private fun drawingThread() {
         while (working) {
-            while (!needRedraw)
-                Thread.sleep(10)
+//            while (!needRedraw)
+//                Thread.sleep(10)
+                Thread.sleep(100)
             paint(graphics)
-            needRedraw = false
+//            needRedraw = false
         }
     }
 
