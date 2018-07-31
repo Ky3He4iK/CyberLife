@@ -1,5 +1,6 @@
 import ImprovedCell.Companion.MIND_SIZE
 import ImprovedCell.Companion.isMulti
+import kotlin.math.roundToInt
 
 fun indirectInc(cell: ImprovedCell, shift: Int): Int {
     return (cell.adr + shift) % MIND_SIZE
@@ -147,6 +148,9 @@ val gens = arrayOf(
             else
                 cell.cellMulti() // if cell in the edge of chain - it's "free". Cake is a lie
             1
+        },
+        BaseGen(hashSetOf(27), true, "RandomShift") { _ ->
+            (Math.random() * MIND_SIZE).roundToInt()
         }
 )
 
@@ -155,7 +159,7 @@ fun checkGens() {
     gens.forEach { gen ->
         gen.genCodes.forEach {
             if (it in genes.keys)
-                print("Doubling gene $it in ${gen.name} and ${genes[it]!!}")
+                print("WARNING: Doubling gene $it in ${gen.name} and ${genes[it]!!}")
             else
                 genes[it] = gen.name
         }

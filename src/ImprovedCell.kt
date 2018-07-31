@@ -27,7 +27,7 @@ class ImprovedCell {
         }
         if (alive == CONDITION.FREE)
             return // don't do anything if it's a corpse
-        loop@ while (true) {
+        loop@ for (i in 0 until 15) {
             val command = mind[adr]
             var wasCom = false
             for (gen in gens)
@@ -98,8 +98,12 @@ class ImprovedCell {
             }
             //if cell too deep get minerals (but no more 999)
             val moreMineralsLevels = arrayOf(World.simulation.worldHeight / 2,
-                    World.simulation.worldHeight / 6 * 4,
-                    World.simulation.worldHeight / 6 * 5)
+                    World.simulation.worldHeight * 5 / 8,
+                    World.simulation.worldHeight * 6 / 8,
+                    World.simulation.worldHeight * 7 / 8,
+                    World.simulation.worldHeight * 15 / 16,
+                    World.simulation.worldHeight * 31 / 32,
+                    World.simulation.worldHeight * 63 / 64)
             moreMineralsLevels.forEach { if (coordinates.y < it) mineral++ }
             if (mineral > 999)
                 mineral = 999

@@ -18,7 +18,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     init {
         simulation = this
 
-        title = "CyberLife 1.2.0 by Ky3He4iK"
+        title = "CyberLife 1.2.2 by Ky3He4iK"
         size = Dimension(worldWidth * cellSize + xBoundary * 2, worldHeight * cellSize + yBoundary * 2)
         setLocation(0, 0)
 
