@@ -1,5 +1,4 @@
 import java.awt.Color
-import kotlin.math.max
 import kotlin.math.min
 
 class ImprovedCell {
@@ -16,10 +15,6 @@ class ImprovedCell {
 
     var mind = IntArray(MIND_SIZE) // There will store bot's DNA
 
-    fun mutate() { // change random byte in DNA
-        mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
-    }
-
     fun step() {
         if (alive == CONDITION.ORGANIC) { // organic is always doing to depth
             if (isFreeCell(coordinates.x, coordinates.y + 1))
@@ -33,13 +28,13 @@ class ImprovedCell {
             var wasCom = false
             for (gen in gens)
                 if (command in gen.genCodes) {
-                    botIncCommandAddress(gen.action(this))
+                    incCommandAddress(gen.action(this))
                     if (gen.isLong)
                         break@loop
                     wasCom = true
                 }
             if (!wasCom) {
-                botIncCommandAddress(mind[adr])
+                incCommandAddress(mind[adr])
                 break
             }
         }
@@ -94,7 +89,7 @@ class ImprovedCell {
             }
             energy -= 3 // spent 3 energy just for nothing. Life is very expensive thing
             if (energy < 1) { // If cell can't afford be alive then die and turn into organic
-                bot2Organic()
+                onDie()
                 return
             }
             //if cell too deep get minerals (but no more 999)
@@ -111,82 +106,16 @@ class ImprovedCell {
         }
     }
 
-    private fun relativeToAbsoluteDirection(direction: Int) = (direction + this.direction) % 8
-
-    /**
-     * @direction - absolute direction
-     * @return X coordinate near cell
-     */
-    private fun xFromDirection(direction: Int): Int {
-        return when (direction) {
-            0, 6, 7 -> (coordinates.x + World.simulation.worldWidth - 1) % World.simulation.worldWidth
-            in 2..4 -> (coordinates.x + 1) % World.simulation.worldWidth
-            else -> coordinates.x
-        }
-    }
-
-    /**
-     * @direction - absolute direction
-     * @return Y coordinate near cell
-     */
-    private fun yFromDirection(direction: Int): Int {
-        return when (direction) {
-            in 0..2 -> coordinates.y - 1
-            in 4..6 -> coordinates.y + 1
-            else -> coordinates.y
-        }
-    }
-
-    /**
-     * @return (relative?) direction to free cell (clockwise from forward) or null if no free cells
-     */
-    private fun findEmptyDirection(): Int? {
-        for (i in 0..7) {
-            val dir = relativeToAbsoluteDirection(i)
-            if (isFreeCell(xFromDirection(dir), yFromDirection(dir)))
-                return i
-        }
-        return null
+    fun mutate() { // change random byte in DNA
+        mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
     }
 
     fun hasFreeDirection() = findEmptyDirection() != null
-
 
     /**
      * get parameter for command - byte with next position
      */
     fun botGetParam(): Int = mind[(adr + 1) % MIND_SIZE]
-
-    /**
-     * direct increase command's address by
-     * @offset
-     */
-    private fun botIncCommandAddress(offset: Int) {
-        adr = (adr + offset) % MIND_SIZE
-    }
-
-
-    /**
-     * turn cell into organic
-     */
-    private fun bot2Organic() {
-        alive = CONDITION.ORGANIC // It's now organic
-        chainPrev?.chainNext = null
-        chainNext?.chainPrev = null
-        chainPrev = null
-        chainNext = null
-    }
-
-    /**
-     * move cell to (xt, yt). Without checking
-     */
-    private fun moveCell(xt: Int, yt: Int) {
-        if (xt != -1 && yt != -1) {
-            World.simulation.matrix[xt][yt] = this
-            World.getCell(coordinates.x, coordinates.y).alive = CONDITION.FREE
-            coordinates = Coordinates(xt, yt)
-        }
-    }
 
 
     /**
@@ -209,7 +138,6 @@ class ImprovedCell {
             goGreen() // get more green
         }
     }
-
 
     /**
      * transform minerals to energy
@@ -314,7 +242,6 @@ class ImprovedCell {
             else -> 5
         }
     }
-
 
     /**
      * attacking neighbor's DNA
@@ -465,6 +392,50 @@ class ImprovedCell {
 
 
     /**
+     * direct increase command's address by
+     * @offset
+     */
+    private fun incCommandAddress(offset: Int) {
+        adr = (adr + offset) % MIND_SIZE
+    }
+
+    /**
+     * turn dead cell into organic
+     */
+    private fun onDie() {
+        alive = CONDITION.ORGANIC // It's now organic
+        chainPrev?.chainNext = null
+        chainNext?.chainPrev = null
+        chainPrev = null
+        chainNext = null
+    }
+
+    /**
+     * move cell to (xt, yt). Without checking
+     */
+    private fun moveCell(xt: Int, yt: Int) {
+        if (xt != -1 && yt != -1) {
+            World.simulation.matrix[xt][yt] = this
+            World.getCell(coordinates.x, coordinates.y).alive = CONDITION.FREE
+            coordinates = Coordinates(xt, yt)
+        }
+    }
+
+    private fun relativeToAbsoluteDirection(direction: Int) = (direction + this.direction) % 8
+
+    /**
+     * @return (relative?) direction to free cell (clockwise from forward) or null if no free cells
+     */
+    private fun findEmptyDirection(): Int? {
+        for (i in 0..7) {
+            val dir = relativeToAbsoluteDirection(i)
+            if (isFreeCell(xFromDirection(dir), yFromDirection(dir)))
+                return i
+        }
+        return null
+    }
+
+    /**
      * Is growing energy?
      */
     fun isEnergyGrow(): Boolean {
@@ -501,6 +472,31 @@ class ImprovedCell {
 
 
     /**
+     * @direction - absolute direction
+     * @return X coordinate near cell
+     */
+    private fun xFromDirection(direction: Int): Int {
+        return when (direction) {
+            0, 6, 7 -> (coordinates.x + World.simulation.worldWidth - 1) % World.simulation.worldWidth
+            in 2..4 -> (coordinates.x + 1) % World.simulation.worldWidth
+            else -> coordinates.x
+        }
+    }
+
+    /**
+     * @direction - absolute direction
+     * @return Y coordinate near cell
+     */
+    private fun yFromDirection(direction: Int): Int {
+        return when (direction) {
+            in 0..2 -> coordinates.y - 1
+            in 4..6 -> coordinates.y + 1
+            else -> coordinates.y
+        }
+    }
+
+
+    /**
      * Make cell more red on screen
      * @cell - Cell
      * @num - How much red add
@@ -528,7 +524,6 @@ class ImprovedCell {
     }
 
     companion object {
-
         var MIND_SIZE = 64 //bot's DNA capacity
 
         enum class CONDITION {

@@ -2,9 +2,7 @@ import ImprovedCell.Companion.MIND_SIZE
 import ImprovedCell.Companion.isMulti
 import kotlin.math.roundToInt
 
-fun indirectInc(cell: ImprovedCell, shift: Int): Int {
-    return (cell.adr + shift) % MIND_SIZE
-}
+fun indirectInc(cell: ImprovedCell, shift: Int): Int = (cell.adr + shift) % MIND_SIZE
 
 class BaseGen(val genCodes: HashSet<Int>, val isLong: Boolean, val name: String, val action: (cell: ImprovedCell) -> Int)
 
@@ -156,14 +154,11 @@ val gens = arrayOf(
 
 fun checkGens() {
     val genes = HashMap<Int, String>()
-    gens.forEach { gen ->
-        gen.genCodes.forEach {
-            if (it in genes.keys)
-                println("WARNING: Doubling gene $it in ${gen.name} and ${genes[it]!!}")
-            else if (it >= MIND_SIZE || it < 0)
-                println("WARNING: Invalid gene $it in ${gen.name}")
-            else
-                genes[it] = gen.name
-        }
-    }
+    for (gen in gens)
+        for (genCode in gen.genCodes)
+            when {
+                genCode in genes.keys -> println("WARNING: Doubling gene $genCode in ${gen.name} and ${genes[genCode]!!}")
+                genCode >= MIND_SIZE || genCode < 0 -> println("WARNING: Invalid gene $genCode in ${gen.name}")
+                else -> genes[genCode] = gen.name
+            }
 }
