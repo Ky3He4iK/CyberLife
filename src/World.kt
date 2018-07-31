@@ -3,7 +3,7 @@ import javax.swing.*
 import kotlin.concurrent.thread
 
 class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
-    var matrix = Array(worldWidth) { Array<ImprovedCell?>(worldHeight) { null } } // World's matrix
+    var matrix = Array(worldWidth) { Array(worldHeight) { ImprovedCell() } } // World's matrix
 
     private var colors = Array(worldWidth) { Array<Color>(worldHeight) { Color.BLACK } } // World's matrix
     private var day = 0
@@ -26,22 +26,21 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         isVisible = true
     }
 
-    private fun getCellColor(cell: ImprovedCell?): Color {
-        return when {
-            cell == null -> Color.WHITE
-            cell.alive == 1 || cell.alive == 2 -> {
+    private fun getCellColor(cell: ImprovedCell): Color {
+        return when (cell.alive) {
+            ImprovedCell.Companion.CONDITION.FREE -> Color.WHITE
+            ImprovedCell.Companion.CONDITION.ORGANIC -> {
                 organic++
                 Color.GRAY
             }
-            cell.alive == 3 -> {
+            ImprovedCell.Companion.CONDITION.ALIVE -> {
                 population++
                 cell.color.toColor()
             }
-            else -> Color.BLACK
         }
     }
 
-    fun paint(g: Graphics?, sudo: Boolean) {
+    private fun paint(g: Graphics?, sudo: Boolean) {
         if (g == null)
             return
         if (sudo) {
@@ -120,11 +119,11 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     private fun distributedPart(widthRange: IntRange) {
         for (yw in 0 until worldHeight)
             for (xw in widthRange)
-                try {
-                    matrix[xw][yw]?.step() // do actions for every cell
-                } catch (e: NullPointerException) {
-                    println("Mutlithreading is cool")
-                }
+//                try {
+                    matrix[xw][yw].step() // do actions for every cell
+//                } catch (e: NullPointerException) {
+//                    println("Mutlithreading is cool")
+//                }
     }
 
     private fun myThread(widthStart: Int, widthStop: Int, ind: Int) {
@@ -136,11 +135,6 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         }
     }
 
-    // делает паузу
-    fun sleep() {
-        Thread.sleep(20)
-    }
-
     fun generateAdam() { // generate empty world with 1 cell
         val cell = ImprovedCell()
         cell.coordinates = Coordinates(worldWidth / 2, worldHeight / 2) //move cell into center
@@ -148,15 +142,14 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         cell.direction = 5
         cell.mind = IntArray(ImprovedCell.MIND_SIZE) { 25 } // fill genome by command 25 - photosynthesis
         cell.color = MyColor(0, 255, 0)
+        cell.alive = ImprovedCell.Companion.CONDITION.ALIVE
         matrix[cell.coordinates.x][cell.coordinates.y] = cell
     }
 
     companion object {
         var simulation: World = World(200, 100)
 
-        fun getCell(xPos: Int, yPos: Int): ImprovedCell? {
-            if (xPos < 0 || xPos >= simulation.worldWidth || yPos < 0 || yPos >= simulation.worldHeight)
-                return null
+        fun getCell(xPos: Int, yPos: Int): ImprovedCell {
             return simulation.matrix[xPos][yPos]
         }
     }

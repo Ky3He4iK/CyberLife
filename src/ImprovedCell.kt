@@ -1,6 +1,5 @@
 import java.awt.Color
-import java.lang.Math.min
-import kotlin.math.max
+import kotlin.math.min
 
 class ImprovedCell {
     private var adr = 0
@@ -8,7 +7,7 @@ class ImprovedCell {
 
     var coordinates = Coordinates(0, 0)
     var energy = 5
-    var alive = LV_ALIVE
+    var alive = CONDITION.FREE
     var color = MyColor(0, 0, 0)
     var direction = 2
     var mprev: ImprovedCell? = null
@@ -16,17 +15,17 @@ class ImprovedCell {
 
     var mind = IntArray(MIND_SIZE) // There will store bot's DNA
 
-    private fun relativeToAbsoluteDirection(direction: Int) = (direction + this.direction) % 8
+    private fun mutate() { // change random byte in DNA
+        mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
+    }
 
     fun step() {
-        if (alive == LV_ORGANIC_SINK) {
-            if (coordinates.y != 0 && World.getCell(coordinates.x, coordinates.y - 1) == null)
-                moveCell(coordinates.x, coordinates.y - 1)
-            else
-                alive = LV_ORGANIC_HOLD
+        if (alive == CONDITION.ORGANIC) { // organic is always doing to depth
+            if (isFreeCell(coordinates.x, coordinates.y + 1))
+                moveCell(coordinates.x, coordinates.y + 1)
             return
         }
-        if (alive == 0 || alive == 1)
+        if (alive == CONDITION.FREE)
             return // don't do anything if it's a corpse
         loop@ for (cyc in 0..14) {
             val command = mind[adr]
@@ -144,8 +143,8 @@ class ImprovedCell {
                     break@loop
                 }
                 47 -> { // mutate (change 2 randome bytes)
-                    mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
-                    mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
+                    mutate()
+                    mutate()
                     botIncCommandAddress(1)
                     break@loop
                 }
@@ -162,7 +161,7 @@ class ImprovedCell {
         }
 
         //check for energy, child time and distribute energy&minerals with neighbors in a chain
-        if (alive == LV_ALIVE) {
+        if (alive == CONDITION.ALIVE) {
             val a = isMulti(this)
             if (a == 3) {
                 val pb = mprev
@@ -224,6 +223,8 @@ class ImprovedCell {
         }
     }
 
+    private fun relativeToAbsoluteDirection(direction: Int) = (direction + this.direction) % 8
+
     /**
      * @direction - absolute direction
      * @return X coordinate near cell
@@ -256,7 +257,7 @@ class ImprovedCell {
             val dir = relativeToAbsoluteDirection(i)
             val xt = xFromVektorA(dir)
             val yt = yFromVektorA(dir)
-            if (yt >= 0 && yt < World.simulation.worldHeight && World.getCell(xt, yt) == null)
+            if (isFreeCell(xt, yt))
                 return i
         }
         return 8
@@ -290,7 +291,7 @@ class ImprovedCell {
      * turn cell into organic
      */
     private fun bot2Organic() {
-        alive = LV_ORGANIC_HOLD // It's now organic
+        alive = CONDITION.ORGANIC // It's now organic
         mprev?.mnext = null
         mnext?.mprev = null
         mprev = null
@@ -303,9 +304,8 @@ class ImprovedCell {
     private fun moveCell(xt: Int, yt: Int) {
         if (xt != -1 && yt != -1) {
             World.simulation.matrix[xt][yt] = this
-            World.simulation.matrix[coordinates.x][coordinates.y] = null
-            coordinates.x = xt
-            coordinates.y = yt
+            World.getCell(coordinates.x, coordinates.y).alive = CONDITION.FREE
+            coordinates = Coordinates(xt, yt)
         }
     }
 
@@ -327,7 +327,7 @@ class ImprovedCell {
         val energy = (a + 11 - 15.0 * coordinates.y / World.simulation.worldHeight + t).toInt() // formula to calc energy count
         if (energy > 0) {
             this.energy += energy // add energy to cell
-            goGreen(energy) // get more green
+            goGreen() // get more green
         }
     }
 
@@ -337,7 +337,7 @@ class ImprovedCell {
      */
     private fun cellMineral2Energy() {
         val mineralsCount = min(mineral, 100) // max 100 minerals in one time
-        goBlue(mineralsCount) // do cell more blue
+        goBlue() // do cell more blue
         mineral -= mineralsCount
         energy += mineralsCount * 4 // 1 mineral == 4 energy
     }
@@ -379,39 +379,34 @@ class ImprovedCell {
         val yt = yFromVektorA(dir)
         var there = cellSeeCells(direction, isRelative)
         if (there == 4) {
-            deleteBot(World.getCell(xt, yt)!!)
+            deleteBot(World.getCell(xt, yt))
             energy += 100 // get 100 energy
-            goRed(100) // do cell more red
+            goRed() // do cell more red
         } else if (there == 5 || there == 6) {
-            var min1 = World.getCell(xt, yt)!!.mineral
-            val en = World.getCell(xt, yt)!!.energy
-            val redChange: Int
-
+            var min1 = World.getCell(xt, yt).mineral
+            val en = World.getCell(xt, yt).energy
             // if enough minerals
             if (mineral >= min1) {
                 mineral -= min1 // spent minerals to kill victim
-                deleteBot(World.getCell(xt, yt)!!) // delete victim
+                deleteBot(World.getCell(xt, yt)) // delete victim
                 val cl = 100 + en / 2 // add energy
                 energy += cl
-                redChange = cl
             } else {
                 // if victim have more minerals
                 min1 -= mineral // spent minerals to defence
                 mineral = 0
-                World.getCell(xt, yt)!!.mineral = min1
+                World.getCell(xt, yt).mineral = min1
                 if (energy >= 2 * min1) { // try
-                    deleteBot(World.getCell(xt, yt)!!) // delete victim
+                    deleteBot(World.getCell(xt, yt)) // delete victim
                     val cl = 100 + en / 2 - 2 * min1 // every victim's mineral cost 2 energy
                     energy += cl
-                    redChange = max(cl, 0)
                 } else {
                     // if not enough energy - killed by victim
-                    World.getCell(xt, yt)!!.mineral = min1 - energy / 2  // victim spent minerals
+                    World.getCell(xt, yt).mineral = min1 - energy / 2  // victim spent minerals
                     energy = 0 // life over
-                    redChange = 0
                 }
             }
-            goRed(redChange)
+            goRed()
             there = 5
         }
         return there
@@ -434,9 +429,9 @@ class ImprovedCell {
         val yt = yFromVektorA(dir)
         return when {
             yt < 0 || yt >= World.simulation.worldHeight -> 3 //DO NOT CHANGE ORDER
-            World.getCell(xt, yt) == null -> 2
-            World.getCell(xt, yt)!!.alive <= LV_ORGANIC_SINK -> 4
-            isRelative(World.getCell(xt, yt)!!) -> 6
+            isFreeCell(xt, yt) -> 2
+            World.getCell(xt, yt).alive == CONDITION.ORGANIC -> 4
+            isRelative(World.getCell(xt, yt)) -> 6
             else -> 5
         }
     }
@@ -449,15 +444,11 @@ class ImprovedCell {
         val dir = relativeToAbsoluteDirection(0)
         val xt = xFromVektorA(dir)
         val yt = yFromVektorA(dir)
-        if (yt >= 0 && yt < World.simulation.worldHeight && World.getCell(xt, yt) != null) {
-            if (World.getCell(xt, yt)!!.alive == LV_ALIVE) { // if there is alive cell
-                energy -= 10 // Spent 10 energy
-                if (energy > 0) { // If have enough energy
-                    val ma = (Math.random() * MIND_SIZE).toInt() // changing random byte in DNA
-                    val mc = (Math.random() * MIND_SIZE).toInt()
-                    World.getCell(xt, yt)!!.mind[ma] = mc
-                }
-            }
+        if (yt >= 0 && yt < World.simulation.worldHeight && World.getCell(xt, yt).alive == CONDITION.ALIVE) {
+            // if there is alive cell
+            energy -= 10 // Spent 10 energy
+            if (energy > 0) // If have enough energy
+                World.getCell(xt, yt).mutate()
         }
     }
 
@@ -478,17 +469,17 @@ class ImprovedCell {
         val yt = yFromVektorA(dir)
         var there = cellSeeCells(direction, isRelative)
         if (there == 5 || there == 6) {
-            val neighborEnergy = World.getCell(xt, yt)!!.energy
-            val neighborMineral = World.getCell(xt, yt)!!.mineral
+            val neighborEnergy = World.getCell(xt, yt).energy
+            val neighborMineral = World.getCell(xt, yt).mineral
             if (energy > neighborEnergy) {
                 val halfDiff = (energy - neighborEnergy) / 2
                 energy -= halfDiff
-                World.getCell(xt, yt)!!.energy += halfDiff
+                World.getCell(xt, yt).energy += halfDiff
             }
             if (mineral > neighborMineral) {
                 val halfDiff = (mineral - neighborMineral) / 2
                 mineral -= halfDiff
-                World.getCell(xt, yt)!!.mineral += halfDiff
+                World.getCell(xt, yt).mineral += halfDiff
             }
             there = 5
         }
@@ -512,9 +503,9 @@ class ImprovedCell {
         val yt = yFromVektorA(dir)
         var there = cellSeeCells(direction, isRelative)
         if (there == 5 || there == 6) {
-            World.getCell(xt, yt)!!.energy += energy / 4
+            World.getCell(xt, yt).energy += energy / 4
             energy -= energy / 4
-            World.getCell(xt, yt)!!.mineral = min(World.getCell(xt, yt)!!.mineral + mineral / 4, 999)
+            World.getCell(xt, yt).mineral = min(World.getCell(xt, yt).mineral + mineral / 4, 999)
             mineral -= mineral / 4
             there = 5
         }
@@ -547,9 +538,7 @@ class ImprovedCell {
 
         newCell.mind = mind.clone() // clone DNA from parent
         if (Math.random() < 0.25) { // // in 1/4 cases make mutation - change random byte in DNA
-            val ma = (Math.random() * MIND_SIZE).toInt() // byte pos
-            val mc = (Math.random() * MIND_SIZE).toInt() // byte value
-            newCell.mind[ma] = mc
+            newCell.mutate()
         }
 
         newCell.adr = 0 //By default start with 0 command
@@ -561,7 +550,7 @@ class ImprovedCell {
         newCell.mineral = mineral / 2
         mineral /= 2
 
-        newCell.alive = 3 // It's alive! ALIVE!
+        newCell.alive = CONDITION.ALIVE // It's alive! ALIVE!
         newCell.color = color
 
         newCell.direction = (Math.random() * 8).toInt() // Random direction
@@ -613,7 +602,7 @@ class ImprovedCell {
      * @cell
      */
     private fun isRelative(cell: ImprovedCell): Boolean {
-        if (cell.alive != LV_ALIVE)
+        if (cell.alive != CONDITION.ALIVE)
             return false
         var wasDifferent = false
         for (i in 0 until MIND_SIZE)
@@ -626,15 +615,20 @@ class ImprovedCell {
     }
 
     /**
+     * @return true is it's correct cell index and its condition isn't free
+     */
+    private fun isFreeCell(x: Int, y: Int): Boolean
+            = y >= 0 && y < World.simulation.worldHeight && x >= 0 && x < World.simulation.worldWidth
+            && World.getCell(x, y).alive == CONDITION.FREE
+
+
+    /**
      * Make cell more red on screen
      * @cell - Cell
      * @num - How much red add
      */
-    private fun goRed(num: Int) {
+    private fun goRed() {
         color = MyColor(0xFF, 0, 0)
-//        color.red = min(color.green + num, 255)
-//        color.blue = max(color.blue - (num shr 1), 0)
-//        color.green = max(color.green - (num shr 1), 0)
     }
 
     /**
@@ -642,11 +636,8 @@ class ImprovedCell {
      * @cell - Cell
      * @num - How much green add
      */
-    private fun goGreen(num: Int) {
+    private fun goGreen() {
         color = MyColor(0, 0xFF, 0)
-//        color.green = min(color.green + num, 255)
-//        color.red = max(color.red - (num shr 1), 0)
-//        color.blue = max(color.blue - (num shr 1), 0)
     }
 
     /**
@@ -654,32 +645,19 @@ class ImprovedCell {
      * @cell - Cell
      * @num - How much blue add
      */
-    private fun goBlue(num: Int) {
+    private fun goBlue() {
         color = MyColor(0, 0, 0xFF)
-//        color.blue = min(color.blue + num, 255)
-//        color.red = max(color.red - (num shr 1), 0)
-//        color.green = max(color.green - (num shr 1), 0)
     }
 
     companion object {
-        //Cell's state
-        var LV_FREE = 0 // Free space
-        var LV_ORGANIC_HOLD = 1 // Cell is died and now there are organic
-        var LV_ORGANIC_SINK = 2 // Cell is died and now there are organic which is moving down
-        var LV_ALIVE = 3  // Cell is alive
 
         var MIND_SIZE = 64 //bot's DNA capacity
 
-        /*enum class DIRECTIONS {
-            UP,
-            UP_LEFT,
-            LEFT,
-            DOWN_LEFT,
-            DOWN,
-            DOWN_RIGHT,
-            RIGHT,
-            UP_RIGHT
-        }*/
+        enum class CONDITION {
+            FREE,
+            ORGANIC,
+            ALIVE,
+        }
 
         /**
          * delete
@@ -694,7 +672,8 @@ class ImprovedCell {
                 nextCell.mprev = null
             cell.mprev = null
             cell.mnext = null
-            World.simulation.matrix[cell.coordinates.x][cell.coordinates.y] = null // delete from world
+//            World.simulation.matrix[cell.coordinates.x][cell.coordinates.y] = null // delete from world
+            World.getCell(cell.coordinates.x, cell.coordinates.y).alive = CONDITION.FREE // delete from world
         }
 
         /**
@@ -705,17 +684,9 @@ class ImprovedCell {
          */
         fun isMulti(cell: ImprovedCell): Int = ((cell.mnext != null).toInt() shl 1) or (cell.mprev != null).toInt() // some binary magic
     }
-
-    
 }
 
 data class Coordinates(var x: Int, var y: Int)
 data class MyColor(var red: Int, var green: Int, var blue: Int) {
     fun toColor(): Color = Color(red, green, blue)
-}
-
-fun Byte.toUnsignedInt(): Int {
-    if (this < 0)
-        return this + 256
-    return this.toInt()
 }
