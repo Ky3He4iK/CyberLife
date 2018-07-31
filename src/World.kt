@@ -12,13 +12,13 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     private val xBoundary = 10
     private val yBoundary = 50
     private val cellSize = 5
-    private var finished = Array(4) {false}
+    private var finished = Array(4) { false }
     private var working = true
 
     init {
         simulation = this
 
-        title = "CyberLife 1.1.0 by Ky3He4iK"
+        title = "CyberLife 1.2.0 by Ky3He4iK"
         size = Dimension(worldWidth * cellSize + xBoundary * 2, worldHeight * cellSize + yBoundary * 2)
         setLocation(0, 0)
 
@@ -40,10 +40,10 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         }
     }
 
-    private fun paint(g: Graphics?, sudo: Boolean) {
+    private fun paint(g: Graphics?, fullRefresh: Boolean) {
         if (g == null)
             return
-        if (sudo) {
+        if (fullRefresh) {
             g.drawRect(xBoundary - 1, yBoundary - 1, simulation.worldWidth * cellSize + 1, simulation.worldHeight * cellSize + 1)
             g.color = Color.WHITE
             g.fillRect(xBoundary, yBoundary, cellSize * worldWidth, cellSize * worldHeight)
@@ -53,7 +53,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         for (y in 0 until worldHeight) {
             for (x in 0 until worldWidth) {
                 val color = getCellColor(simulation.matrix[x][y])
-                if (sudo || colors[x][y] != color) {
+                if (fullRefresh || colors[x][y] != color) {
                     g.color = color
                     g.fillRect(xBoundary + x * cellSize, yBoundary + y * cellSize, cellSize, cellSize)
                     colors[x][y] = color
@@ -81,7 +81,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     fun run() {
         val thrCount = 4
 
-        finished = Array(thrCount) {false}
+        finished = Array(thrCount) { false }
         val widthPart = worldWidth / thrCount
         for (ind in 0 until thrCount)
             thread(isDaemon = true,
@@ -95,7 +95,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         }
 
         while (day < Int.MAX_VALUE) {
-            finished = Array(thrCount) {true}
+            finished = Array(thrCount) { true }
             Thread.sleep(5)
             for (i in 0 until thrCount)
                 while (finished[i])
@@ -106,7 +106,6 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     }
 
     private fun drawingThread() {
-//        initialPaint(graphics!!)
         var c = 0L
         val updateRate = 500L
         val fullUpdateRate = 4000 / updateRate
@@ -119,11 +118,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     private fun distributedPart(widthRange: IntRange) {
         for (yw in 0 until worldHeight)
             for (xw in widthRange)
-//                try {
-                    matrix[xw][yw].step() // do actions for every cell
-//                } catch (e: NullPointerException) {
-//                    println("Mutlithreading is cool")
-//                }
+                matrix[xw][yw].step() // do actions for every cell
     }
 
     private fun myThread(widthStart: Int, widthStop: Int, ind: Int) {

@@ -10,8 +10,8 @@ class ImprovedCell {
     var alive = CONDITION.FREE
     var color = MyColor(0, 0, 0)
     var direction = 2
-    var mprev: ImprovedCell? = null
-    var mnext: ImprovedCell? = null
+    var chainPrev: ImprovedCell? = null
+    var chainNext: ImprovedCell? = null
 
     var mind = IntArray(MIND_SIZE) // There will store bot's DNA
 
@@ -47,8 +47,8 @@ class ImprovedCell {
         if (alive == CONDITION.ALIVE) {
             val a = isMulti(this)
             if (a == 3) {
-                val pb = mprev
-                val nb = mnext
+                val pb = chainPrev
+                val nb = chainNext
 
                 //distribute minerals
                 var minerals = mineral + nb!!.mineral + pb!!.mineral
@@ -62,16 +62,16 @@ class ImprovedCell {
                 val apb = isMulti(pb)
                 val anb = isMulti(nb)
                 if (anb == 3 && apb == 3) {
-                    var enegryTotal = energy + nb.energy + pb.energy
-                    enegryTotal /= 3
-                    energy = enegryTotal
-                    nb.energy = enegryTotal
-                    pb.energy = enegryTotal
+                    var energyTotal = energy + nb.energy + pb.energy
+                    energyTotal /= 3
+                    energy = energyTotal
+                    nb.energy = energyTotal
+                    pb.energy = energyTotal
                 }
             }
             val neigh = when (a) {
-                1 -> mprev
-                2 -> mnext
+                1 -> chainPrev
+                2 -> chainNext
                 else -> null
             }
             if (neigh != null) {
@@ -112,7 +112,7 @@ class ImprovedCell {
      * @direction - absolute direction
      * @return X coordinate near cell
      */
-    private fun xFromVektorA(direction: Int): Int {
+    private fun xFromDirection(direction: Int): Int {
         return when (direction) {
             0, 6, 7 -> (coordinates.x + World.simulation.worldWidth - 1) % World.simulation.worldWidth
             in 2..4 -> (coordinates.x + 1) % World.simulation.worldWidth
@@ -124,7 +124,7 @@ class ImprovedCell {
      * @direction - absolute direction
      * @return Y coordinate near cell
      */
-    private fun yFromVektorA(direction: Int): Int {
+    private fun yFromDirection(direction: Int): Int {
         return when (direction) {
             in 0..2 -> coordinates.y - 1
             in 4..6 -> coordinates.y + 1
@@ -133,20 +133,18 @@ class ImprovedCell {
     }
 
     /**
-     * @return (relative?) direction to free cell (clockwise from forward) or 8 if no free cells
+     * @return (relative?) direction to free cell (clockwise from forward) or null if no free cells
      */
-    private fun findEmptyDirection(): Int {
+    private fun findEmptyDirection(): Int? {
         for (i in 0..7) {
             val dir = relativeToAbsoluteDirection(i)
-            val xt = xFromVektorA(dir)
-            val yt = yFromVektorA(dir)
-            if (isFreeCell(xt, yt))
+            if (isFreeCell(xFromDirection(dir), yFromDirection(dir)))
                 return i
         }
-        return 8
+        return null
     }
 
-    fun hasFreeDirection() = findEmptyDirection() != 8
+    fun hasFreeDirection() = findEmptyDirection() != null
 
 
     /**
@@ -162,23 +160,16 @@ class ImprovedCell {
         adr = (adr + offset) % MIND_SIZE
     }
 
-    /**
-     * indirect increase command's address
-     * @offset - offset to command
-     */
-    private fun botIndirectIncCmdAddress(offset: Int) = botIncCommandAddress((adr + offset) % MIND_SIZE)
-
-
 
     /**
      * turn cell into organic
      */
     private fun bot2Organic() {
         alive = CONDITION.ORGANIC // It's now organic
-        mprev?.mnext = null
-        mnext?.mprev = null
-        mprev = null
-        mnext = null
+        chainPrev?.chainNext = null
+        chainNext?.chainPrev = null
+        chainPrev = null
+        chainNext = null
     }
 
     /**
@@ -203,9 +194,9 @@ class ImprovedCell {
             else -> 2
         }
         var a = 0
-        if (mprev != null) // synergy?
+        if (chainPrev != null) // synergy?
             a += 4
-        if (mnext != null)
+        if (chainNext != null)
             a += 4
         val energy = (a + 11 - 15.0 * coordinates.y / World.simulation.worldHeight + t).toInt() // formula to calc energy count
         if (energy > 0) {
@@ -240,7 +231,7 @@ class ImprovedCell {
         val there = cellSeeCells(direction, isRelative)
         if (there == 2) {
             val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
-            moveCell(xFromVektorA(dir), yFromVektorA(dir))
+            moveCell(xFromDirection(dir), yFromDirection(dir))
         }
         return there
     }
@@ -258,8 +249,8 @@ class ImprovedCell {
     fun cellEat(direction: Int, isRelative: Boolean): Int {
         energy -= 4 // Lose 4 energy anyway
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
-        val xt = xFromVektorA(dir)
-        val yt = yFromVektorA(dir)
+        val xt = xFromDirection(dir)
+        val yt = yFromDirection(dir)
         var there = cellSeeCells(direction, isRelative)
         if (there == 4) {
             deleteBot(World.getCell(xt, yt))
@@ -308,8 +299,8 @@ class ImprovedCell {
      */
     fun cellSeeCells(direction: Int, isRelative: Boolean): Int {
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
-        val xt = xFromVektorA(dir)
-        val yt = yFromVektorA(dir)
+        val xt = xFromDirection(dir)
+        val yt = yFromDirection(dir)
         return when {
             yt < 0 || yt >= World.simulation.worldHeight -> 3 //DO NOT CHANGE ORDER
             isFreeCell(xt, yt) -> 2
@@ -325,8 +316,8 @@ class ImprovedCell {
      */
     fun cellAttackDNA() {
         val dir = relativeToAbsoluteDirection(0)
-        val xt = xFromVektorA(dir)
-        val yt = yFromVektorA(dir)
+        val xt = xFromDirection(dir)
+        val yt = yFromDirection(dir)
         if (yt >= 0 && yt < World.simulation.worldHeight && World.getCell(xt, yt).alive == CONDITION.ALIVE) {
             // if there is alive cell
             energy -= 10 // Spent 10 energy
@@ -348,8 +339,8 @@ class ImprovedCell {
      */
     fun cellShare(direction: Int, isRelative: Boolean): Int {
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
-        val xt = xFromVektorA(dir)
-        val yt = yFromVektorA(dir)
+        val xt = xFromDirection(dir)
+        val yt = yFromDirection(dir)
         var there = cellSeeCells(direction, isRelative)
         if (there == 5 || there == 6) {
             val neighborEnergy = World.getCell(xt, yt).energy
@@ -382,8 +373,8 @@ class ImprovedCell {
      */
     fun cellGive(direction: Int, isRelative: Boolean): Int {
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
-        val xt = xFromVektorA(dir)
-        val yt = yFromVektorA(dir)
+        val xt = xFromDirection(dir)
+        val yt = yFromDirection(dir)
         var there = cellSeeCells(direction, isRelative)
         if (there == 5 || there == 6) {
             World.getCell(xt, yt).energy += energy / 4
@@ -403,18 +394,18 @@ class ImprovedCell {
     fun cellDouble(): ImprovedCell? {
         energy -= 150 // Creating copy cost 150 energy
         if (energy < 150)
-            return null// If hasn't enought energy - time to die
+            return null// If hasn't enough energy - time to die
 
         var direction = findEmptyDirection()
-        if (direction == 8) { // If hasn't free direction - die
+        if (direction == null) { // If hasn't free direction - die
             energy = 0
             return null
         }
 
         direction = relativeToAbsoluteDirection(direction)
 
-        val xt = xFromVektorA(direction)
-        val yt = yFromVektorA(direction)
+        val xt = xFromDirection(direction)
+        val yt = yFromDirection(direction)
         if (yt == -1)
             println()
         val newCell = ImprovedCell()
@@ -443,11 +434,11 @@ class ImprovedCell {
     }
 
     /**
-     * Borning new cell of multi-cell life
+     * Born new cell of multi-cell life
      */
     fun cellMulti() {
-        val previousCell = mprev
-        val nextCell = mnext // Links to previous and next cells in chain
+        val previousCell = chainPrev
+        val nextCell = chainNext // Links to previous and next cells in chain
 
         if (previousCell != null && nextCell != null) {
             return // if both neighbours is non-null - already into chain
@@ -459,11 +450,11 @@ class ImprovedCell {
 //            return
 
         if (nextCell == null) { // Insert cell to end of the chain
-            mnext = newCell
-            newCell.mprev = this
+            chainNext = newCell
+            newCell.chainPrev = this
         } else {
-            mprev = newCell
-            newCell.mnext = this
+            chainPrev = newCell
+            newCell.chainNext = this
         }
     }
 
@@ -500,8 +491,7 @@ class ImprovedCell {
     /**
      * @return true is it's correct cell index and its condition isn't free
      */
-    private fun isFreeCell(x: Int, y: Int): Boolean
-            = y >= 0 && y < World.simulation.worldHeight && x >= 0 && x < World.simulation.worldWidth
+    private fun isFreeCell(x: Int, y: Int): Boolean = y >= 0 && y < World.simulation.worldHeight && x >= 0 && x < World.simulation.worldWidth
             && World.getCell(x, y).alive == CONDITION.FREE
 
 
@@ -547,14 +537,14 @@ class ImprovedCell {
          * @cell
          */
         fun deleteBot(cell: ImprovedCell) {
-            val prevCell = cell.mprev
-            val nextCell = cell.mnext
+            val prevCell = cell.chainPrev
+            val nextCell = cell.chainNext
             if (prevCell != null)  // delete cell from chain
-                prevCell.mnext = null
+                prevCell.chainNext = null
             if (nextCell != null)
-                nextCell.mprev = null
-            cell.mprev = null
-            cell.mnext = null
+                nextCell.chainPrev = null
+            cell.chainPrev = null
+            cell.chainNext = null
 //            World.simulation.matrix[cell.coordinates.x][cell.coordinates.y] = null // delete from world
             World.getCell(cell.coordinates.x, cell.coordinates.y).alive = CONDITION.FREE // delete from world
         }
@@ -565,7 +555,7 @@ class ImprovedCell {
          * 2 if have next cell
          * 3 if have both cells
          */
-        fun isMulti(cell: ImprovedCell): Int = ((cell.mnext != null).toInt() shl 1) or (cell.mprev != null).toInt() // some binary magic
+        fun isMulti(cell: ImprovedCell): Int = ((cell.chainNext != null).toInt() shl 1) or (cell.chainPrev != null).toInt() // some binary magic
     }
 }
 
