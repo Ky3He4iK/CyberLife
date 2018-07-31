@@ -5,6 +5,7 @@ import kotlin.concurrent.thread
 class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     var matrix = Array(worldWidth) { Array<ImprovedCell?>(worldHeight) { null } } // World's matrix
 
+    private var colors = Array(worldWidth) { Array<Color>(worldHeight) { Color.BLACK } } // World's matrix
     private var day = 0
     private var population = 0
     private var organic = 0
@@ -40,17 +41,24 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         }
     }
 
-    override fun paint(g: Graphics?) {
-        g!!.drawRect(xBoundary - 1, yBoundary - 1, simulation.worldWidth * cellSize + 1, simulation.worldHeight * cellSize + 1)
-        g.color = Color.BLACK
-        g.fillRect(xBoundary, yBoundary, cellSize * worldWidth, cellSize * worldHeight)
-
+    fun paint(g: Graphics?, sudo: Boolean) {
+        if (g == null)
+            return
+        if (sudo) {
+            g.drawRect(xBoundary - 1, yBoundary - 1, simulation.worldWidth * cellSize + 1, simulation.worldHeight * cellSize + 1)
+            g.color = Color.WHITE
+            g.fillRect(xBoundary, yBoundary, cellSize * worldWidth, cellSize * worldHeight)
+        }
         population = 0
         organic = 0
         for (y in 0 until worldHeight) {
             for (x in 0 until worldWidth) {
-                g.color = getCellColor(simulation.matrix[x][y])
-                g.fillRect(xBoundary + x * cellSize + 1, yBoundary + y * cellSize + 1, cellSize - 1, cellSize - 1)
+                val color = getCellColor(simulation.matrix[x][y])
+                if (sudo || colors[x][y] != color) {
+                    g.color = color
+                    g.fillRect(xBoundary + x * cellSize, yBoundary + y * cellSize, cellSize, cellSize)
+                    colors[x][y] = color
+                }
             }
         }
 
@@ -89,7 +97,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
         while (day < Int.MAX_VALUE) {
             finished = Array(thrCount) {true}
-            Thread.sleep(10)
+            Thread.sleep(5)
             for (i in 0 until thrCount)
                 while (finished[i])
                     Thread.sleep(1)
@@ -99,9 +107,13 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     }
 
     private fun drawingThread() {
+//        initialPaint(graphics!!)
+        var c = 0L
+        val updateRate = 500L
+        val fullUpdateRate = 4000 / updateRate
         while (working) {
-            Thread.sleep(500)
-            paint(graphics)
+            Thread.sleep(updateRate)
+            paint(graphics, (c++) % fullUpdateRate == 0L) //full update every 4 seconds
         }
     }
 
@@ -135,7 +147,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         cell.energy = 990 // first cell is full of energy
         cell.direction = 5
         cell.mind = IntArray(ImprovedCell.MIND_SIZE) { 25 } // fill genome by command 25 - photosynthesis
-        cell.color = MutableColor(0, 255.toByte(), 0)
+        cell.color = MyColor(0, 255, 0)
         matrix[cell.coordinates.x][cell.coordinates.y] = cell
     }
 
