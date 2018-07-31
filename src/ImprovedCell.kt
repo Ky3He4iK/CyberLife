@@ -1,4 +1,5 @@
 import java.awt.Color
+import kotlin.math.max
 import kotlin.math.min
 
 class ImprovedCell {

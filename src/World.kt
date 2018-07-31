@@ -18,7 +18,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
     init {
         simulation = this
 
-        title = "CyberLife 1.2.2 by Ky3He4iK"
+        title = "CyberLife 1.2.3 by Ky3He4iK"
         size = Dimension(worldWidth * cellSize + xBoundary * 2, worldHeight * cellSize + yBoundary * 2)
         setLocation(0, 0)
 
@@ -45,8 +45,8 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
             return
         if (fullRefresh) {
             g.drawRect(xBoundary - 1, yBoundary - 1, simulation.worldWidth * cellSize + 1, simulation.worldHeight * cellSize + 1)
-            g.color = Color.WHITE
-            g.fillRect(xBoundary, yBoundary, cellSize * worldWidth, cellSize * worldHeight)
+//            g.color = Color.WHITE
+//            g.fillRect(xBoundary, yBoundary, cellSize * worldWidth, cellSize * worldHeight)
         }
         population = 0
         organic = 0
@@ -96,7 +96,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
         while (day < Int.MAX_VALUE) {
             finished = Array(thrCount) { true }
-            Thread.sleep(5)
+            Thread.sleep(20)
             for (i in 0 until thrCount)
                 while (finished[i])
                     Thread.sleep(1)
@@ -107,8 +107,8 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 
     private fun drawingThread() {
         var c = 0L
-        val updateRate = 500L
-        val fullUpdateRate = 4000 / updateRate
+        val updateRate = 100L
+        val fullUpdateRate = 1000 / updateRate
         while (working) {
             Thread.sleep(updateRate)
             paint(graphics, (c++) % fullUpdateRate == 0L) //full update every 4 seconds
