@@ -140,7 +140,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
         cell.coordinates = Coordinates(worldWidth / 2, worldHeight / 2) //move cell into center
         cell.energy = 990 // first cell is full of energy
         cell.direction = 5
-        cell.mind = IntArray(ImprovedCell.MIND_SIZE) { 25 } // fill genome by command 25 - photosynthesis
+        cell.mind = IntArray(ImprovedCell.MIND_SIZE) { 22 } // fill genome by command 22 - photosynthesis
         cell.color = MyColor(0, 255, 0)
         cell.alive = ImprovedCell.Companion.CONDITION.ALIVE
         matrix[cell.coordinates.x][cell.coordinates.y] = cell
@@ -158,6 +158,7 @@ class World(var worldWidth: Int, var worldHeight: Int) : JFrame() {
 fun Boolean.toInt(): Int = if (this) 1 else 0
 
 fun main(args: Array<String>) {
+    checkGens()
     World.simulation.generateAdam()
     World.simulation.run()
 }

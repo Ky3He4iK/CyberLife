@@ -2,9 +2,9 @@ import java.awt.Color
 import kotlin.math.min
 
 class ImprovedCell {
-    private var adr = 0
-    private var mineral = 0
+    var mineral = 0
 
+    var adr = 0
     var coordinates = Coordinates(0, 0)
     var energy = 5
     var alive = CONDITION.FREE
@@ -15,7 +15,7 @@ class ImprovedCell {
 
     var mind = IntArray(MIND_SIZE) // There will store bot's DNA
 
-    private fun mutate() { // change random byte in DNA
+    fun mutate() { // change random byte in DNA
         mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
     }
 
@@ -27,136 +27,19 @@ class ImprovedCell {
         }
         if (alive == CONDITION.FREE)
             return // don't do anything if it's a corpse
-        loop@ for (cyc in 0..14) {
+        loop@ while (true) {
             val command = mind[adr]
-            when (command) {
-                0 -> { // relatively turn
-                    val param = botGetParam() % 8 // get turn
-                    direction = (direction + param) % 8
-                    botIncCommandAddress(2) // go to next command
+            var wasCom = false
+            for (gen in gens)
+                if (command in gen.genCodes) {
+                    botIncCommandAddress(gen.action(this))
+                    if (gen.isLong)
+                        break@loop
+                    wasCom = true
                 }
-                1 -> { // absolutely turn
-                    direction = botGetParam() % 8
-                    botIncCommandAddress(2) // go to next command
-                }
-                25 -> { //Photosynthesis
-                    doPhotosynthesis()
-                    botIncCommandAddress(1)
-                    break@loop // go out 'cause this command is one if terminating
-                }
-                26 -> { // relatively step
-                    if (isMulti(this) == 0) // only single cells can move
-                        botIndirectIncCmdAddress(cellMove(botGetParam() % 8, true)) // change address depending met object
-                    else
-                        botIncCommandAddress(2)
-                    break@loop
-                }
-                27 -> { // absolutely step
-                    if (isMulti(this) == 0) // only single cells can move
-                        botIndirectIncCmdAddress(cellMove(botGetParam() % 8, false)) // change address depending met object
-                    else
-                        botIncCommandAddress(2)
-                    break@loop
-                }
-                28 -> { // relatively eat
-                    botIndirectIncCmdAddress(cellEat(botGetParam() % 8, true))
-                    break@loop
-                }
-                29 -> { // absolutely eat
-                    botIndirectIncCmdAddress(cellEat(botGetParam() % 8, false))
-                    break@loop
-                }
-                30 -> { // relatively see
-                    botIndirectIncCmdAddress(cellSeeCells(botGetParam() % 8, true))
-                    break@loop
-                }
-                31 -> { // absolutely see
-                    botIndirectIncCmdAddress(cellSeeCells(botGetParam() % 8, false))
-                    break@loop
-                }
-                32 -> { //relatively share
-                    botIndirectIncCmdAddress(cellShare(botGetParam() % 8, true))
-                }
-                33-> { //33 absolutely share
-                    botIndirectIncCmdAddress(cellShare(botGetParam() % 8, false))
-                }
-                34 -> { //34 relatively give
-                    botIndirectIncCmdAddress(cellGive(botGetParam() % 8, true))
-                }
-                35 -> { //35 absolutely give
-                    botIndirectIncCmdAddress(cellGive(botGetParam() % 8, false))
-                }
-                36 -> { // round horizontal
-                    direction = if (Math.random() < 0.5) 3 else 7 // turn into random direction
-                    botIncCommandAddress(1)
-                }
-                37 -> { // height check
-                    val param = botGetParam() * World.simulation.worldHeight / MIND_SIZE // get approximate height by DNA
-                    botIndirectIncCmdAddress(2 + (coordinates.y >= param).toInt()) // if too low - step by 2 else - step by 3
-                }
-                38 -> { // energy check
-                    val param = botGetParam() * 1000 / MIND_SIZE // get approximate energy by DNA
-                    botIndirectIncCmdAddress(2 + (coordinates.y >= param).toInt()) // if too low - step by 2 else - step by 3
-                }
-                39 -> { // minerals check
-                    val param = botGetParam() * 1000 / MIND_SIZE // get approximate minerals by DNA
-                    botIndirectIncCmdAddress(2 + (coordinates.y >= param).toInt()) // if too low - step by 2 else - step by 3
-                }
-                40 -> { // create child in chain
-                    val a = isMulti(this)
-                    if (a == 3)
-                        cellDouble() // create free child only if cell is already in chain
-                    else
-                        cellMulti()
-                    botIncCommandAddress(1)
-                    break@loop
-                }
-                41 -> { // create free-life child
-                    val a = isMulti(this)
-                    if (a == 0 || a == 3)
-                        cellDouble()
-                    else
-                        cellMulti() // if cell in the edge of chain - it's "free". Cake is a lie
-                    botIncCommandAddress(1)
-                    break@loop
-                }
-                42 -> { // check for free cell near
-                    botIndirectIncCmdAddress((!hasFreeDirection()).toInt() + 1) // 1 if no free cells 2 otherwise
-                }
-                43 -> { // check for energy input
-                    botIndirectIncCmdAddress((isEnergyGrow()).toInt() + 1) // 1 if no free cells 2 otherwise
-                }
-                44 -> { // check for minerals input
-                    botIndirectIncCmdAddress((coordinates.y <= World.simulation.worldHeight / 2).toInt() + 1)
-                }
-                45 -> { //check for multi-cell life
-                    val mu = isMulti(this)
-                    botIndirectIncCmdAddress(when (mu) {
-                        0 -> 1
-                        3 -> 3
-                        else -> 2
-                    })
-                }
-                46 -> { // turn minerals into energy
-                    cellMineral2Energy()
-                    botIncCommandAddress(1)
-                    break@loop
-                }
-                47 -> { // mutate (change 2 randome bytes)
-                    mutate()
-                    mutate()
-                    botIncCommandAddress(1)
-                    break@loop
-                }
-                48 -> { // attack DNA
-                    cellAttackDNA()
-                    botIncCommandAddress(1)
-                    break@loop
-                }
-                else -> {
-                    botIncCommandAddress(mind[adr])
-                    break@loop
-                } //no actions -> it's goto
+            if (!wasCom) {
+                botIncCommandAddress(mind[adr])
+                break
             }
         }
 
@@ -263,13 +146,13 @@ class ImprovedCell {
         return 8
     }
 
-    private fun hasFreeDirection() = findEmptyDirection() != 8
+    fun hasFreeDirection() = findEmptyDirection() != 8
 
 
     /**
      * get parameter for command - byte with next position
      */
-    private fun botGetParam(): Int = mind[(adr + 1) % MIND_SIZE]
+    fun botGetParam(): Int = mind[(adr + 1) % MIND_SIZE]
 
     /**
      * direct increase command's address by
@@ -313,7 +196,7 @@ class ImprovedCell {
     /**
      * get energy from sun depending deep and cell's minerals count
      */
-    private fun doPhotosynthesis() {
+    fun doPhotosynthesis() {
         val t = when {
             mineral < 100 -> 0
             mineral < 400 -> 1
@@ -335,7 +218,7 @@ class ImprovedCell {
     /**
      * transform minerals to energy
      */
-    private fun cellMineral2Energy() {
+    fun cellMineral2Energy() {
         val mineralsCount = min(mineral, 100) // max 100 minerals in one time
         goBlue() // do cell more blue
         mineral -= mineralsCount
@@ -353,7 +236,7 @@ class ImprovedCell {
      * 5 if there is a alien cell
      * 6 if there is a relative
      */
-    private fun cellMove(direction: Int, isRelative: Boolean): Int {
+    fun cellMove(direction: Int, isRelative: Boolean): Int {
         val there = cellSeeCells(direction, isRelative)
         if (there == 2) {
             val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
@@ -372,7 +255,7 @@ class ImprovedCell {
      * 4 if there is organic
      * 5 if eating was completed successfully (or cell died)
      */
-    private fun cellEat(direction: Int, isRelative: Boolean): Int {
+    fun cellEat(direction: Int, isRelative: Boolean): Int {
         energy -= 4 // Lose 4 energy anyway
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
         val xt = xFromVektorA(dir)
@@ -423,7 +306,7 @@ class ImprovedCell {
      * 5 if there is a alien
      * 6 if there is a relative
      */
-    private fun cellSeeCells(direction: Int, isRelative: Boolean): Int {
+    fun cellSeeCells(direction: Int, isRelative: Boolean): Int {
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
         val xt = xFromVektorA(dir)
         val yt = yFromVektorA(dir)
@@ -440,7 +323,7 @@ class ImprovedCell {
     /**
      * attacking neighbor's DNA
      */
-    private fun cellAttackDNA() {
+    fun cellAttackDNA() {
         val dir = relativeToAbsoluteDirection(0)
         val xt = xFromVektorA(dir)
         val yt = yFromVektorA(dir)
@@ -463,7 +346,7 @@ class ImprovedCell {
      * 4 if there is organic
      * 5 if sharing was completed successfully
      */
-    private fun cellShare(direction: Int, isRelative: Boolean): Int {
+    fun cellShare(direction: Int, isRelative: Boolean): Int {
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
         val xt = xFromVektorA(dir)
         val yt = yFromVektorA(dir)
@@ -497,7 +380,7 @@ class ImprovedCell {
      * 4 if there is organic
      * 5 if sharing was completed successfully
      */
-    private fun cellGive(direction: Int, isRelative: Boolean): Int {
+    fun cellGive(direction: Int, isRelative: Boolean): Int {
         val dir = if (isRelative) relativeToAbsoluteDirection(direction) else direction
         val xt = xFromVektorA(dir)
         val yt = yFromVektorA(dir)
@@ -517,7 +400,7 @@ class ImprovedCell {
      * Cell will be doubled
      * @return new cell
      */
-    private fun cellDouble(): ImprovedCell? {
+    fun cellDouble(): ImprovedCell? {
         energy -= 150 // Creating copy cost 150 energy
         if (energy < 150)
             return null// If hasn't enought energy - time to die
@@ -562,7 +445,7 @@ class ImprovedCell {
     /**
      * Borning new cell of multi-cell life
      */
-    private fun cellMulti() {
+    fun cellMulti() {
         val previousCell = mprev
         val nextCell = mnext // Links to previous and next cells in chain
 
@@ -588,7 +471,7 @@ class ImprovedCell {
     /**
      * Is growing energy?
      */
-    private fun isEnergyGrow(): Boolean {
+    fun isEnergyGrow(): Boolean {
         val t = when {
             mineral < 100 -> 0
             mineral < 400 -> 1
