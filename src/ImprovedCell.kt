@@ -9,7 +9,7 @@ class ImprovedCell {
     var coordinates = Coordinates(0, 0)
     var energy = 5
     var alive = LV_ALIVE
-    var color = MutableColor(0, 0, 0)
+    var color = MyColor(0, 0, 0)
     var direction = 2
     var mprev: ImprovedCell? = null
     var mnext: ImprovedCell? = null
@@ -31,79 +31,79 @@ class ImprovedCell {
         loop@ for (cyc in 0..14) {
             val command = mind[adr]
             when (command) {
-                23 -> { //23 - relatively turn
+                0 -> { // relatively turn
                     val param = botGetParam() % 8 // get turn
                     direction = (direction + param) % 8
                     botIncCommandAddress(2) // go to next command
                 }
-                24 -> { //24 - absolutely turn
+                1 -> { // absolutely turn
                     direction = botGetParam() % 8
                     botIncCommandAddress(2) // go to next command
                 }
-                25 -> { //25 - Photosynthesis
+                25 -> { //Photosynthesis
                     doPhotosynthesis()
                     botIncCommandAddress(1)
                     break@loop // go out 'cause this command is one if terminating
                 }
-                26 -> { //26 relatively step
+                26 -> { // relatively step
                     if (isMulti(this) == 0) // only single cells can move
                         botIndirectIncCmdAddress(cellMove(botGetParam() % 8, true)) // change address depending met object
                     else
                         botIncCommandAddress(2)
                     break@loop
                 }
-                27 -> { //27 absolutely step
+                27 -> { // absolutely step
                     if (isMulti(this) == 0) // only single cells can move
                         botIndirectIncCmdAddress(cellMove(botGetParam() % 8, false)) // change address depending met object
                     else
                         botIncCommandAddress(2)
                     break@loop
                 }
-                28 -> { //28 relatively eat
+                28 -> { // relatively eat
                     botIndirectIncCmdAddress(cellEat(botGetParam() % 8, true))
                     break@loop
                 }
-                29 -> { //29 absolutely eat
+                29 -> { // absolutely eat
                     botIndirectIncCmdAddress(cellEat(botGetParam() % 8, false))
                     break@loop
                 }
-                30 -> { //30 relatively see
+                30 -> { // relatively see
                     botIndirectIncCmdAddress(cellSeeCells(botGetParam() % 8, true))
                     break@loop
                 }
-                31 -> { //31 absolutely see
+                31 -> { // absolutely see
                     botIndirectIncCmdAddress(cellSeeCells(botGetParam() % 8, false))
                     break@loop
                 }
-                32, 42 -> { //32, 42 relatively share. Improved probability
+                32 -> { //relatively share
                     botIndirectIncCmdAddress(cellShare(botGetParam() % 8, true))
                 }
-                33, 50 -> { //33, 50 absolutely share. Improved probability
+                33-> { //33 absolutely share
                     botIndirectIncCmdAddress(cellShare(botGetParam() % 8, false))
                 }
-                34, 51 -> { //34, 51 relatively give. Improved probability
+                34 -> { //34 relatively give
                     botIndirectIncCmdAddress(cellGive(botGetParam() % 8, true))
                 }
-                35, 52 -> { //35, 52 absolutely give. Improved probability
+                35 -> { //35 absolutely give
                     botIndirectIncCmdAddress(cellGive(botGetParam() % 8, false))
                 }
-                36 -> { //36 round horizontal
+                36 -> { // round horizontal
                     direction = if (Math.random() < 0.5) 3 else 7 // turn into random direction
                     botIncCommandAddress(1)
                 }
-                37 -> { //37 height check
+                37 -> { // height check
                     val param = botGetParam() * World.simulation.worldHeight / MIND_SIZE // get approximate height by DNA
                     botIndirectIncCmdAddress(2 + (coordinates.y >= param).toInt()) // if too low - step by 2 else - step by 3
                 }
-                38 -> { //38 energy check
+                38 -> { // energy check
                     val param = botGetParam() * 1000 / MIND_SIZE // get approximate energy by DNA
                     botIndirectIncCmdAddress(2 + (coordinates.y >= param).toInt()) // if too low - step by 2 else - step by 3
                 }
-                39 -> { //39 minerals check
+                39 -> { // minerals check
                     val param = botGetParam() * 1000 / MIND_SIZE // get approximate minerals by DNA
                     botIndirectIncCmdAddress(2 + (coordinates.y >= param).toInt()) // if too low - step by 2 else - step by 3
                 }
-                40 -> { //40 create child in chain
+                40 -> { // create child in chain
                     val a = isMulti(this)
                     if (a == 3)
                         cellDouble() // create free child only if cell is already in chain
@@ -112,7 +112,7 @@ class ImprovedCell {
                     botIncCommandAddress(1)
                     break@loop
                 }
-                41 -> { //41 create free-life child
+                41 -> { // create free-life child
                     val a = isMulti(this)
                     if (a == 0 || a == 3)
                         cellDouble()
@@ -121,16 +121,16 @@ class ImprovedCell {
                     botIncCommandAddress(1)
                     break@loop
                 }
-                43 -> { //43 check for free cell near
+                42 -> { // check for free cell near
                     botIndirectIncCmdAddress((!hasFreeDirection()).toInt() + 1) // 1 if no free cells 2 otherwise
                 }
-                44 -> { //44 check for energy input
+                43 -> { // check for energy input
                     botIndirectIncCmdAddress((isEnergyGrow()).toInt() + 1) // 1 if no free cells 2 otherwise
                 }
-                45 -> { //45 check for minerals input
+                44 -> { // check for minerals input
                     botIndirectIncCmdAddress((coordinates.y <= World.simulation.worldHeight / 2).toInt() + 1)
                 }
-                46 -> { //45 - check for multi-cell life
+                45 -> { //check for multi-cell life
                     val mu = isMulti(this)
                     botIndirectIncCmdAddress(when (mu) {
                         0 -> 1
@@ -138,27 +138,28 @@ class ImprovedCell {
                         else -> 2
                     })
                 }
-                47 -> { // turn minerals into energy
+                46 -> { // turn minerals into energy
                     cellMineral2Energy()
                     botIncCommandAddress(1)
                     break@loop
                 }
-                48 -> { // mutate (change 2 randome bytes)
+                47 -> { // mutate (change 2 randome bytes)
                     mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
                     mind[(Math.random() * MIND_SIZE).toInt()] = (Math.random() * MIND_SIZE).toInt()
                     botIncCommandAddress(1)
                     break@loop
                 }
-                49 -> { // attack DNA
+                48 -> { // attack DNA
                     cellAttackDNA()
                     botIncCommandAddress(1)
                     break@loop
                 }
+                else -> {
+                    botIncCommandAddress(mind[adr])
+                    break@loop
+                } //no actions -> it's goto
             }
         }
-
-        if (mind[adr] in 0..22 || mind[adr]in 53 until MIND_SIZE)
-            botIncCommandAddress(mind[adr]) //If no commands - it's GOTO!
 
         //check for energy, child time and distribute energy&minerals with neighbors in a chain
         if (alive == LV_ALIVE) {
@@ -624,6 +625,17 @@ class ImprovedCell {
         return true
     }
 
+    /**
+     * Make cell more red on screen
+     * @cell - Cell
+     * @num - How much red add
+     */
+    private fun goRed(num: Int) {
+        color = MyColor(0xFF, 0, 0)
+//        color.red = min(color.green + num, 255)
+//        color.blue = max(color.blue - (num shr 1), 0)
+//        color.green = max(color.green - (num shr 1), 0)
+    }
 
     /**
      * Make cell more green on screen
@@ -631,9 +643,10 @@ class ImprovedCell {
      * @num - How much green add
      */
     private fun goGreen(num: Int) {
-        color.green = min(color.green.toUnsignedInt() + num, 255).toByte()
-        color.red = max(color.red.toUnsignedInt() - num / 2, 0).toByte()
-        color.blue = max(color.blue.toUnsignedInt() - num / 2, 0).toByte()
+        color = MyColor(0, 0xFF, 0)
+//        color.green = min(color.green + num, 255)
+//        color.red = max(color.red - (num shr 1), 0)
+//        color.blue = max(color.blue - (num shr 1), 0)
     }
 
     /**
@@ -642,20 +655,10 @@ class ImprovedCell {
      * @num - How much blue add
      */
     private fun goBlue(num: Int) {
-        color.blue = min(color.blue.toUnsignedInt() + num, 255).toByte()
-        color.green = max(color.green.toUnsignedInt() - num / 2, 0).toByte()
-        color.red = max(color.red.toUnsignedInt() - num / 2, 0).toByte()
-    }
-
-    /**
-     * Make cell more red on screen
-     * @cell - Cell
-     * @num - How much red add
-     */
-    private fun goRed(num: Int) {
-        color.red = min(color.red.toUnsignedInt() + num, 255).toByte()
-        color.blue = max(color.blue.toUnsignedInt() - num / 2, 0).toByte()
-        color.green = max(color.green.toUnsignedInt() - num / 2, 0).toByte()
+        color = MyColor(0, 0, 0xFF)
+//        color.blue = min(color.blue + num, 255)
+//        color.red = max(color.red - (num shr 1), 0)
+//        color.green = max(color.green - (num shr 1), 0)
     }
 
     companion object {
@@ -707,8 +710,8 @@ class ImprovedCell {
 }
 
 data class Coordinates(var x: Int, var y: Int)
-data class MutableColor(var red: Byte, var green: Byte, var blue: Byte) {
-    fun toColor(): Color = Color(red.toUnsignedInt(), green.toUnsignedInt(), blue.toUnsignedInt())
+data class MyColor(var red: Int, var green: Int, var blue: Int) {
+    fun toColor(): Color = Color(red, green, blue)
 }
 
 fun Byte.toUnsignedInt(): Int {
